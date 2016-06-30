@@ -64,15 +64,16 @@ use Win32::TieRegistry;
 use Win32::OLE;
 use Readonly;
 
-Readonly my $PROFILES_ROOT => 'HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\Sessions';
+Readonly my $PROFILES_ROOT =>
+    'HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\Sessions';
 Readonly my @EXCLUDED_KEYS => qw(
-  HostName
+    HostName
 );
 Readonly my $SINGLE_BACKSLASH => q(\\);
 Readonly my $DOUBLE_BACKSLASH => q(\\\\);
-Readonly my @PUTTY_LOCATIONS => (
-    "c:\\Program Files\\PuTTY\utty.exe",
-        "c:\\Program Files (x86)\\PuTTY\utty.exe",
+Readonly my @PUTTY_LOCATIONS  => (
+  "c:\\Program Files\\PuTTY\utty.exe",
+  "c:\\Program Files (x86)\\PuTTY\utty.exe",
 );
 
 # Not an object method
@@ -102,7 +103,7 @@ sub set_all_profiles_to_default {
     $session =~ s/\\$//;
     my $session_decoded = $session;
     $session_decoded =~ s/%20/ /g;
-    next if ($session eq $template || $session_decoded eq $template);
+    next if ( $session eq $template || $session_decoded eq $template );
     print "...$session_decoded\n";
     my $putty = PuTTYProfile->new($session);
     $putty->set_template_profile($template);
@@ -120,7 +121,9 @@ sub create_shortcuts_for_all_sessions {
     $session =~ s/\\$//;
     my $session_decoded = $session;
     $session_decoded =~ s/%20/ /g;
-    next if ($session eq 'Default Settings' || $session_decoded eq 'Default Settings');
+    next
+        if ( $session eq 'Default Settings'
+      || $session_decoded eq 'Default Settings' );
     my $putty = PuTTYProfile->new($session_decoded);
     print "...$session_decoded\n";
     $putty->create_shortcut($dir);
@@ -129,96 +132,98 @@ sub create_shortcuts_for_all_sessions {
 }
 
 sub new {
-  my ($class, $profile) = @_;
+  my ( $class, $profile ) = @_;
   my $self = {};
   bless $self, $class;
-  $self->{profile} = $profile;
+  $self->{profile}         = $profile;
   $self->{profile_encoded} = $self->_encode_profile_name($profile);
-  $self->{profiles_path} = $PROFILES_ROOT;
-  $self->{profile_path} = $self->{profiles_path} . $SINGLE_BACKSLASH . $self->{profile_encoded};
+  $self->{profiles_path}   = $PROFILES_ROOT;
+  $self->{profile_path}
+      = $self->{profiles_path} . $SINGLE_BACKSLASH . $self->{profile_encoded};
   return $self;
 }
 
 sub set_template_profile {
-  my ($self, $profile) = @_;
+  my ( $self, $profile ) = @_;
   my $template_encoded = $profile;
   $self->{template_profile_encoded} = $self->_encode_profile_name($profile);
-  $self->{template_profile} = $profile;
-  $self->{template_handle} = PuTTYProfile->new($self->{template_profile});
+  $self->{template_profile}         = $profile;
+  $self->{template_handle} = PuTTYProfile->new( $self->{template_profile} );
   return;
 }
 
 sub _encode_profile_name {
-  my ($self, $profile) = @_;
+  my ( $self, $profile ) = @_;
   $profile =~ s/ /%20/g;
   return $profile;
 }
 
 sub get_keys {
-  my ($self) = @_;
+  my ($self)      = @_;
   my $reg_profile = $self->{profile_path};
-  my %keys = %{ $Registry->{$reg_profile} };
-  my @keys = sort keys %keys;
+  my %keys        = %{ $Registry->{$reg_profile} };
+  my @keys        = sort keys %keys;
   return @keys;
 }
 
 sub get_value {
-  my ($self, $key) = @_;
+  my ( $self, $key ) = @_;
   $key =~ s/^\\//;
-  my @v = $Registry->{$self->{profile_path}}->GetValue($key);
+  my @v = $Registry->{ $self->{profile_path} }->GetValue($key);
   return @v;
 }
 
 sub get_default_value {
-  my ($self, $key) = @_;
+  my ( $self, $key ) = @_;
   return $self->{template_handle}->get_value($key);
 }
 
 sub set_value {
-  my ($self, $key, $value, $type) = @_;
+  my ( $self, $key, $value, $type ) = @_;
   $key =~ s/^\\//;
-  $Registry->{$self->{profile_path}}->SetValue($key, $value, $type);
+  $Registry->{ $self->{profile_path} }->SetValue( $key, $value, $type );
   return;
 }
 
 sub set_default_value {
-  my ($self, $key) = @_;
+  my ( $self, $key ) = @_;
   my $check_key = $key;
   $check_key =~ s/^\\+//;
-  return if grep { /^$check_key$/ } @EXCLUDED_KEYS ;
-  my ($default_value, $type) = $self->get_default_value($key);
-  $self->set_value($key, $default_value, $type);
+  return if grep {/^$check_key$/} @EXCLUDED_KEYS;
+  my ( $default_value, $type ) = $self->get_default_value($key);
+  $self->set_value( $key, $default_value, $type );
   return;
 }
 
 sub set_path_to_putty {
-  my ($self, $dir) = @_;
+  my ( $self, $dir ) = @_;
   $self->{path_to_putty} = $dir;
 }
 
 sub _get_path_to_putty {
   my ($self) = @_;
-  if (! exists $self->{path_to_putty}) {
+  if ( !exists $self->{path_to_putty} ) {
     foreach my $path (@PUTTY_LOCATIONS) {
-      $self->{path_to_putty} = $path if (-f $path);
+      $self->{path_to_putty} = $path if ( -f $path );
     }
   }
-  if (exists $self->{path_to_putty}) {
+  if ( exists $self->{path_to_putty} ) {
     return $self->{path_to_putty};
-  } else {
+  }
+  else {
     die "Cannot find putty";
   }
 }
 
 sub create_shortcut {
-  my ($self, $dir, $argstring) = @_;
-  $argstring = '' unless($argstring);
+  my ( $self, $dir, $argstring ) = @_;
+  $argstring = '' unless ($argstring);
   my $lnk_path = $dir . '\\' . $self->{profile} . '.lnk';
-  my $wsh = new Win32::OLE 'WScript.Shell';
-  my $shcut = $wsh->CreateShortcut($lnk_path)
-    or die "Can't create shortcut to $lnk_path: " . @!;
-  $shcut->{TargetPath} = $self->_get_path_to_putty();
-  $shcut->{Arguments} = '-load "' . $self->{profile} . '" ' . $argstring;
+  my $wsh      = new Win32::OLE 'WScript.Shell';
+  my $shcut    = $wsh->CreateShortcut($lnk_path)
+      or die "Can't create shortcut to $lnk_path: " . @!;
+  $shcut->{TargetPath}  = $self->_get_path_to_putty();
+  $shcut->{Arguments}   = '-load "' . $self->{profile} . '" ' . $argstring;
   $shcut->{Description} = 'Connect to ' . $self->{profile};
   $shcut->Save;
   undef $shcut;
@@ -236,13 +241,13 @@ sub set_default_values {
 }
 
 sub dump {
-  my ($self, $save_dir) = @_;
+  my ( $self, $save_dir ) = @_;
   my $profile = $self->{profile};
   $save_dir .= '\\' unless $save_dir =~ /\\$/;
   $profile =~ s/\\$//;
   my $filename = $save_dir . $profile . '.reg';
-  my $key = $self->{profile_path};
-  my $cmd = qq{regedit /E "$filename" "$key"};
+  my $key      = $self->{profile_path};
+  my $cmd      = qq{regedit /E "$filename" "$key"};
   `$cmd`;
 }
 
